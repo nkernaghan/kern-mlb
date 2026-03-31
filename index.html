@@ -872,7 +872,9 @@ footer {
 
 <script>
 // Data source: static JSON files (for GitHub Pages) or PocketBase API (local dev)
-const DATA_DIR = './data';
+// Auto-detect base path for GitHub Pages vs local
+const basePath = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+const DATA_DIR = basePath + '/data';
 let currentDate;
 let _allGames = [];      // full dataset
 let _allPredictions = []; // full dataset
