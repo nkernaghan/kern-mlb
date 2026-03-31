@@ -934,7 +934,7 @@ async function loadData() {
   try {
     // Load games first, then the rest
     _allGames = await fetchJSON('games.json');
-    _allResults = [];
+    allResults = [];
     try { allResults = await fetchJSON('results.json'); } catch(e) { allResults = []; }
     _allPredictions = await fetchJSON('predictions.json');
     _allOdds = await fetchJSON('odds.json');
@@ -965,10 +965,6 @@ function filterByDate() {
   } else {
     allPredictions = [];
     allOdds = [];
-    }
-  } catch (err) {
-    console.error('Fetch error:', err);
-    allGames = []; allPredictions = []; allOdds = []; allResults = [];
   }
   updateTabCounts();
   renderPnL();
