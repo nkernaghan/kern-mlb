@@ -1140,13 +1140,12 @@ function buildPickRow(p) {
   const edgeColor = edge == null ? 'muted' : edge > 0 ? 'green' : edge < 0 ? 'red' : 'muted';
   const edgeText = edge != null ? `${edge > 0 ? '+' : ''}${edge.toFixed(1)}%` : '--';
 
-  // Unit sizing based on grade, confidence, and edge
+  // Unit sizing based on grade and edge
   let units = 0;
-  const c = conf || 0;
   const e = edge || 0;
   if (grade === 'BET') {
-    if (c >= 20 && e >= 5) units = 2;
-    else if (c >= 15 && e >= 3) units = 1.5;
+    if (e >= 5) units = 2;
+    else if (e >= 3) units = 1.5;
     else units = 1;
   } else if (grade === 'LEAN') {
     units = 0.5;
@@ -1216,7 +1215,7 @@ function renderPnL() {
     const cUnits = cr.reduce((s, x) => s + (x.pnl_units || 0), 0);
     const cDollars = cr.reduce((s, x) => s + (x.pnl_dollars || 0), 0);
     const cClass = cDollars > 0 ? 'profit' : cDollars < 0 ? 'loss' : 'neutral';
-    const sign = cDollars >= 0 ? '+' : '';
+    const sign = cDollars >= 0 ? '+' : '-';
     catHTML += `<div class="pnl-cat">
       <span class="pnl-cat-name">${catNames[cat]}</span>
       <span class="pnl-cat-record">${cw}-${cl}${cp ? '-' + cp : ''}</span>
@@ -1224,7 +1223,7 @@ function renderPnL() {
     </div>`;
   });
 
-  const dollarSign = totalDollars >= 0 ? '+' : '';
+  const dollarSign = totalDollars >= 0 ? '+' : '-';
   const unitSign = totalUnits >= 0 ? '+' : '';
 
   section.innerHTML = `<div class="pnl-panel">
