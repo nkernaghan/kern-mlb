@@ -1182,14 +1182,11 @@ function esc(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function renderPnL() {
-  const section = document.getElementById('pnlSection');
-  if (!allResults || allResults.length === 0) {
-    section.innerHTML = `<div class="pnl-panel"><div class="pnl-header"><span class="pnl-title serif">P&L Tracker</span><span class="pnl-subtitle">Season record &middot; $100/unit</span></div><div class="pnl-empty">No graded results yet. Results will appear after games are graded.</div></div>`;
-    return;
+function buildPnLBlock(title, subtitle, results) {
+  if (!results || results.length === 0) {
+    return `<div class="pnl-panel"><div class="pnl-header"><span class="pnl-title serif">${title}</span><span class="pnl-subtitle">${subtitle}</span></div><div class="pnl-empty">No graded results yet</div></div>`;
   }
-
-  const r = allResults;
+  const r = results;
   const wins = r.filter(x => x.result === 'WIN').length;
   const losses = r.filter(x => x.result === 'LOSS').length;
   const pushes = r.filter(x => x.result === 'PUSH').length;
@@ -1197,69 +1194,65 @@ function renderPnL() {
   const winPct = total > 0 ? (wins / total * 100).toFixed(1) : '0.0';
   const totalUnits = r.reduce((s, x) => s + (x.pnl_units || 0), 0);
   const totalDollars = r.reduce((s, x) => s + (x.pnl_dollars || 0), 0);
-  const roi = total > 0 ? (totalUnits / r.reduce((s, x) => s + Math.abs(x.units || 0), 0) * 100).toFixed(1) : '0.0';
-
+  const wagered = r.reduce((s, x) => s + Math.abs(x.units || 0), 0);
+  const roi = wagered > 0 ? (totalUnits / wagered * 100).toFixed(1) : '0.0';
   const dollarClass = totalDollars > 0 ? 'profit' : totalDollars < 0 ? 'loss' : 'neutral';
   const unitClass = totalUnits > 0 ? 'profit' : totalUnits < 0 ? 'loss' : 'neutral';
-
-  // Category breakdowns
-  const cats = ['game', 'strikeout', 'nrfi'];
-  const catNames = { game: 'Game', strikeout: 'Strikeouts', nrfi: 'NRFI' };
-
-  let catHTML = '';
-  cats.forEach(cat => {
-    const cr = r.filter(x => x.bet_type === cat);
-    const cw = cr.filter(x => x.result === 'WIN').length;
-    const cl = cr.filter(x => x.result === 'LOSS').length;
-    const cp = cr.filter(x => x.result === 'PUSH').length;
-    const cUnits = cr.reduce((s, x) => s + (x.pnl_units || 0), 0);
-    const cDollars = cr.reduce((s, x) => s + (x.pnl_dollars || 0), 0);
-    const cClass = cDollars > 0 ? 'profit' : cDollars < 0 ? 'loss' : 'neutral';
-    const sign = cDollars >= 0 ? '+' : '-';
-    catHTML += `<div class="pnl-cat">
-      <span class="pnl-cat-name">${catNames[cat]}</span>
-      <span class="pnl-cat-record">${cw}-${cl}${cp ? '-' + cp : ''}</span>
-      <span class="pnl-cat-pnl ${cClass}">${sign}${cUnits.toFixed(1)}u / ${sign}$${Math.abs(cDollars).toFixed(0)}</span>
-    </div>`;
-  });
-
   const dollarSign = totalDollars >= 0 ? '+' : '-';
-  const unitSign = totalUnits >= 0 ? '+' : '';
+  const unitSign = totalUnits >= 0 ? '+' : '-';
 
-  section.innerHTML = `<div class="pnl-panel">
-    <div class="pnl-header">
-      <span class="pnl-title serif">P&L Tracker</span>
-      <span class="pnl-subtitle">Season record &middot; $100/unit</span>
-    </div>
+  return `<div class="pnl-panel"><div class="pnl-header"><span class="pnl-title serif">${title}</span><span class="pnl-subtitle">${subtitle}</span></div>
     <div class="pnl-grid">
-      <div class="pnl-cell">
-        <div class="pnl-cell-label">Record</div>
-        <div class="pnl-cell-val neutral">${wins}-${losses}${pushes ? '-' + pushes : ''}</div>
-        <div class="pnl-cell-sub">${winPct}% win rate</div>
-      </div>
-      <div class="pnl-cell">
-        <div class="pnl-cell-label">Unit P&L</div>
-        <div class="pnl-cell-val ${unitClass}">${unitSign}${totalUnits.toFixed(1)}u</div>
-        <div class="pnl-cell-sub">units wagered</div>
-      </div>
-      <div class="pnl-cell">
-        <div class="pnl-cell-label">Dollar P&L</div>
-        <div class="pnl-cell-val ${dollarClass}">${dollarSign}$${Math.abs(totalDollars).toFixed(0)}</div>
-        <div class="pnl-cell-sub">at $100/unit</div>
-      </div>
-      <div class="pnl-cell">
-        <div class="pnl-cell-label">ROI</div>
-        <div class="pnl-cell-val ${dollarClass}">${roi}%</div>
-        <div class="pnl-cell-sub">return on investment</div>
-      </div>
-      <div class="pnl-cell">
-        <div class="pnl-cell-label">Total Picks</div>
-        <div class="pnl-cell-val neutral">${r.length}</div>
-        <div class="pnl-cell-sub">graded</div>
-      </div>
-    </div>
-    <div class="pnl-categories">${catHTML}</div>
-  </div>`;
+      <div class="pnl-cell"><div class="pnl-cell-label">Record</div><div class="pnl-cell-val neutral">${wins}-${losses}${pushes ? '-' + pushes : ''}</div><div class="pnl-cell-sub">${winPct}% win rate</div></div>
+      <div class="pnl-cell"><div class="pnl-cell-label">Unit P&L</div><div class="pnl-cell-val ${unitClass}">${unitSign}${Math.abs(totalUnits).toFixed(1)}u</div><div class="pnl-cell-sub">units wagered</div></div>
+      <div class="pnl-cell"><div class="pnl-cell-label">Dollar P&L</div><div class="pnl-cell-val ${dollarClass}">${dollarSign}$${Math.abs(totalDollars).toFixed(0)}</div><div class="pnl-cell-sub">at $100/unit</div></div>
+      <div class="pnl-cell"><div class="pnl-cell-label">ROI</div><div class="pnl-cell-val ${dollarClass}">${roi}%</div><div class="pnl-cell-sub">return on investment</div></div>
+      <div class="pnl-cell"><div class="pnl-cell-label">Picks</div><div class="pnl-cell-val neutral">${r.length}</div><div class="pnl-cell-sub">graded</div></div>
+    </div></div>`;
+}
+
+function renderPnL() {
+  const section = document.getElementById('pnlSection');
+  if (!allResults || allResults.length === 0) {
+    section.innerHTML = `<div class="pnl-panel"><div class="pnl-header"><span class="pnl-title serif">P&L Tracker</span><span class="pnl-subtitle">Season record &middot; $100/unit</span></div><div class="pnl-empty">No graded results yet. Results will appear after games are graded.</div></div>`;
+    return;
+  }
+
+  const bets = allResults.filter(x => x.grade === 'BET');
+  const leans = allResults.filter(x => x.grade === 'LEAN');
+
+  let html = '';
+
+  // BET P&L — overall
+  html += buildPnLBlock('BET Picks P&L', 'High conviction picks &middot; $100/unit', bets);
+
+  // BET by category
+  const betGame = bets.filter(x => x.bet_type === 'game');
+  const betK = bets.filter(x => x.bet_type === 'strikeout');
+  const betNrfi = bets.filter(x => x.bet_type === 'nrfi');
+
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">';
+  html += buildPnLBlock('Game', 'BET grade', betGame);
+  html += buildPnLBlock('Strikeouts', 'BET grade', betK);
+  html += buildPnLBlock('NRFI', 'BET grade', betNrfi);
+  html += '</div>';
+
+  // LEAN P&L — overall
+  html += '<div style="margin-top:16px">';
+  html += buildPnLBlock('LEAN Picks P&L', 'Lower conviction &middot; 0.5u flat', leans);
+
+  // LEAN by category
+  const leanGame = leans.filter(x => x.bet_type === 'game');
+  const leanK = leans.filter(x => x.bet_type === 'strikeout');
+  const leanNrfi = leans.filter(x => x.bet_type === 'nrfi');
+
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">';
+  html += buildPnLBlock('Game', 'LEAN grade', leanGame);
+  html += buildPnLBlock('Strikeouts', 'LEAN grade', leanK);
+  html += buildPnLBlock('NRFI', 'LEAN grade', leanNrfi);
+  html += '</div></div>';
+
+  section.innerHTML = html;
 }
 
 function updateFooterSync() {
