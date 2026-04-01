@@ -1198,11 +1198,19 @@ function buildPickRow(p, odds) {
   const unitsText = units > 0 ? units % 1 === 0 ? `${units}u` : `${units}u` : '--';
   const unitsColor = units >= 2 ? 'green' : units >= 1 ? 'green' : units > 0 ? 'muted' : 'muted';
 
+  // Build display name — for K props show pitcher name + line
+  let displayName = esc(p.pick);
+  let displayDetail = p.pick_detail ? esc(p.pick_detail) : '';
+  if (type === 'strikeout' && p.pitcher_name) {
+    displayName = `${esc(p.pitcher_name)} ${esc(p.pick)}`;
+    displayDetail = p.pick_detail ? esc(p.pick_detail) + ' Ks' : '';
+  }
+
   return `<div class="pick-row grade-${grade}">
     <span class="type-pill ${pill}">${esc(p.bet_type || 'pick')}</span>
     <div class="pick-info">
-      <div class="pick-name">${esc(p.pick)}</div>
-      ${p.pick_detail ? `<div class="pick-detail">${esc(p.pick_detail)}</div>` : ''}
+      <div class="pick-name">${displayName}</div>
+      ${displayDetail ? `<div class="pick-detail">${displayDetail}</div>` : ''}
     </div>
     <div class="pick-metrics">
       <div class="metric-block">
