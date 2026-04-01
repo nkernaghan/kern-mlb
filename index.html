@@ -1059,6 +1059,8 @@ function render() {
     const allGamePreds = allPredictions.filter(p => p.game_pk === game.game_pk);
     const gameOdds = allOdds.filter(o => o.game_pk === game.game_pk);
     const odds = gameOdds.find(o => (o.bookmaker || '').toLowerCase() === 'fanduel') || gameOdds[0] || {};
+    odds._home_team = game.home_team_name || '';
+    odds._away_team = game.away_team_name || '';
     const hasBet = allGamePreds.some(p => p.grade === 'BET');
     const hasLean = allGamePreds.some(p => p.grade === 'LEAN');
     const delay = (idx * 0.04).toFixed(2);
@@ -1117,7 +1119,7 @@ function render() {
     if (gamePreds.length === 0) {
       html += `<div class="no-picks-msg">No picks match current filter</div>`;
     } else {
-      gamePreds.forEach(p => { html += buildPickRow(p); });
+      gamePreds.forEach(p => { html += buildPickRow(p, odds); });
     }
     html += `</div></div>`;
   });
@@ -1125,7 +1127,45 @@ function render() {
   container.innerHTML = html;
 }
 
-function buildPickRow(p) {
+function getPickML(p, odds) {
+  // For game picks, figure out if the pick is favorite or underdog
+  if (!odds || !odds.home_ml || !odds.away_ml) return null;
+  const pick = (p.pick || '').toLowerCase();
+  const homeMl = Number(odds.home_ml);
+  const awayMl = Number(odds.away_ml);
+  // Check which team was picked by substring match
+  if (!pick) return null;
+  // Return the moneyline of the picked team
+  // We can't perfectly match here, but for game bets the pick is a team name
+  return null; // Will use odds from the game context
+}
+
+function calcUnits(grade, edge, ml) {
+  // ml = moneyline of the picked side (e.g. +200, -150)
+  // For non-game bets (K props, NRFI), ml is null — use edge-based sizing
+  let units = 0;
+  const e = edge || 0;
+
+  if (grade === 'BET') {
+    if (ml != null && ml >= 150) {
+      // Big underdog (+150 or more) — cap at 0.5u
+      units = 0.5;
+    } else if (ml != null && ml >= 100) {
+      // Small underdog (+100 to +149) — cap at 1u
+      units = 1;
+    } else {
+      // Favorite or non-game bet — use edge tiers
+      if (e >= 5) units = 2;
+      else if (e >= 3) units = 1.5;
+      else units = 1;
+    }
+  } else if (grade === 'LEAN') {
+    units = 0.5;
+  }
+  return units;
+}
+
+function buildPickRow(p, odds) {
   const grade = p.grade || 'PASS';
   const type = (p.bet_type || '').toLowerCase();
   let pill = 'pill-default';
@@ -1140,16 +1180,21 @@ function buildPickRow(p) {
   const edgeColor = edge == null ? 'muted' : edge > 0 ? 'green' : edge < 0 ? 'red' : 'muted';
   const edgeText = edge != null ? `${edge > 0 ? '+' : ''}${edge.toFixed(1)}%` : '--';
 
-  // Unit sizing based on grade and edge
-  let units = 0;
-  const e = edge || 0;
-  if (grade === 'BET') {
-    if (e >= 5) units = 2;
-    else if (e >= 3) units = 1.5;
-    else units = 1;
-  } else if (grade === 'LEAN') {
-    units = 0.5;
+  // Determine moneyline for the picked side (game bets only)
+  let pickML = null;
+  if (type === 'game' && odds && odds.home_ml && odds.away_ml) {
+    const pick = (p.pick || '').toLowerCase();
+    // Try to match pick to home or away
+    const homeName = (odds._home_team || '').toLowerCase();
+    const awayName = (odds._away_team || '').toLowerCase();
+    if (pick && homeName && (pick.includes(homeName) || homeName.includes(pick))) {
+      pickML = Number(odds.home_ml);
+    } else if (pick && awayName && (pick.includes(awayName) || awayName.includes(pick))) {
+      pickML = Number(odds.away_ml);
+    }
   }
+
+  const units = calcUnits(grade, edge, pickML);
   const unitsText = units > 0 ? units % 1 === 0 ? `${units}u` : `${units}u` : '--';
   const unitsColor = units >= 2 ? 'green' : units >= 1 ? 'green' : units > 0 ? 'muted' : 'muted';
 
