@@ -1141,23 +1141,18 @@ function getPickML(p, odds) {
 }
 
 function calcUnits(grade, edge, ml, confidence) {
-  // Unit sizing considers BOTH edge and confidence.
-  // High edge + low confidence = smaller bet than high edge + high confidence.
+  // Edge + confidence together determine sizing above 1u.
   let units = 0;
   const e = edge || 0;
   const conf = confidence || 0;
 
   if (grade === 'BET') {
     if (ml != null && ml >= 150) {
-      // Big underdog (+150 or more) — cap at 0.5u
-      units = 0.5;
+      units = 0.5;  // Big underdog
     } else if (ml != null && ml >= 100) {
-      // Small underdog (+100 to +149) — cap at 1u
-      units = 1;
+      units = 1;    // Small underdog
     } else {
-      // Edge-based tiers, scaled down if confidence is marginal
       if (e >= 5 && conf >= 70) units = 2;
-      else if (e >= 5 && conf >= 60) units = 1.5;
       else if (e >= 3 && conf >= 65) units = 1.5;
       else units = 1;
     }
