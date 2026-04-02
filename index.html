@@ -1140,11 +1140,12 @@ function getPickML(p, odds) {
   return null; // Will use odds from the game context
 }
 
-function calcUnits(grade, edge, ml) {
-  // ml = moneyline of the picked side (e.g. +200, -150)
-  // For non-game bets (K props, NRFI), ml is null — use edge-based sizing
+function calcUnits(grade, edge, ml, confidence) {
+  // Unit sizing considers BOTH edge and confidence.
+  // High edge + low confidence = smaller bet than high edge + high confidence.
   let units = 0;
   const e = edge || 0;
+  const conf = confidence || 0;
 
   if (grade === 'BET') {
     if (ml != null && ml >= 150) {
@@ -1154,9 +1155,10 @@ function calcUnits(grade, edge, ml) {
       // Small underdog (+100 to +149) — cap at 1u
       units = 1;
     } else {
-      // Favorite or non-game bet — use edge tiers
-      if (e >= 5) units = 2;
-      else if (e >= 3) units = 1.5;
+      // Edge-based tiers, scaled down if confidence is marginal
+      if (e >= 5 && conf >= 70) units = 2;
+      else if (e >= 5 && conf >= 60) units = 1.5;
+      else if (e >= 3 && conf >= 65) units = 1.5;
       else units = 1;
     }
   } else if (grade === 'LEAN') {
@@ -1194,7 +1196,7 @@ function buildPickRow(p, odds) {
     }
   }
 
-  const units = calcUnits(grade, edge, pickML);
+  const units = calcUnits(grade, edge, pickML, conf);
   const unitsText = units > 0 ? units % 1 === 0 ? `${units}u` : `${units}u` : '--';
   const unitsColor = units >= 2 ? 'green' : units >= 1 ? 'green' : units > 0 ? 'muted' : 'muted';
 
