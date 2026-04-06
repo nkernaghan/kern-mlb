@@ -1268,39 +1268,21 @@ function renderPnL() {
     return;
   }
 
-  const bets = allResults.filter(x => x.grade === 'BET');
-  const leans = allResults.filter(x => x.grade === 'LEAN');
-
   let html = '';
 
-  // BET P&L — overall
-  html += buildPnLBlock('BET Picks P&L', 'High conviction picks &middot; $100/unit', bets);
+  // P&L — BET picks only (LEANs are informational, not tracked)
+  html += buildPnLBlock('Picks P&L', 'BET grade picks &middot; $100/unit', allResults);
 
-  // BET by category
-  const betGame = bets.filter(x => x.bet_type === 'game');
-  const betK = bets.filter(x => x.bet_type === 'strikeout');
-  const betNrfi = bets.filter(x => x.bet_type === 'nrfi');
+  // By category
+  const betGame = allResults.filter(x => x.bet_type === 'game');
+  const betK = allResults.filter(x => x.bet_type === 'strikeout');
+  const betNrfi = allResults.filter(x => x.bet_type === 'nrfi');
 
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">';
-  html += buildPnLBlock('Game', 'BET grade', betGame);
-  html += buildPnLBlock('Strikeouts', 'BET grade', betK);
-  html += buildPnLBlock('NRFI', 'BET grade', betNrfi);
+  html += buildPnLBlock('Game', '', betGame);
+  html += buildPnLBlock('Strikeouts', '', betK);
+  html += buildPnLBlock('NRFI', '', betNrfi);
   html += '</div>';
-
-  // LEAN P&L — overall
-  html += '<div style="margin-top:16px">';
-  html += buildPnLBlock('LEAN Picks P&L', 'Lower conviction &middot; 0.5u flat', leans);
-
-  // LEAN by category
-  const leanGame = leans.filter(x => x.bet_type === 'game');
-  const leanK = leans.filter(x => x.bet_type === 'strikeout');
-  const leanNrfi = leans.filter(x => x.bet_type === 'nrfi');
-
-  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">';
-  html += buildPnLBlock('Game', 'LEAN grade', leanGame);
-  html += buildPnLBlock('Strikeouts', 'LEAN grade', leanK);
-  html += buildPnLBlock('NRFI', 'LEAN grade', leanNrfi);
-  html += '</div></div>';
 
   section.innerHTML = html;
 }
