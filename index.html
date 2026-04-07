@@ -748,6 +748,38 @@ footer {
 .pnl-cat-pnl.profit { color: var(--green); }
 .pnl-cat-pnl.loss { color: var(--red); }
 .pnl-cat-pnl.neutral { color: var(--ink-50); }
+.pnl-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--ink-08);
+  background: var(--ink-04);
+}
+.pnl-filter-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border: 1px solid var(--ink-15);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--ink-50);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pnl-filter-btn:hover { border-color: var(--ink-30); color: var(--ink-80); }
+.pnl-filter-btn.active { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.pnl-days-badge {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-50);
+  letter-spacing: 0.5px;
+}
 .pnl-empty {
   padding: 20px;
   text-align: center;
@@ -1261,6 +1293,46 @@ function buildPnLBlock(title, subtitle, results) {
     </div></div>`;
 }
 
+let pnlFilter = 'all';
+
+function filterResultsByPeriod(results, period) {
+  if (period === 'all') return results;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let cutoff;
+  if (period === '7d') {
+    cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 7);
+  } else if (period === '14d') {
+    cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 14);
+  } else if (period === '30d') {
+    cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 30);
+  } else if (period === 'week') {
+    cutoff = new Date(today);
+    const day = cutoff.getDay();
+    cutoff.setDate(cutoff.getDate() - (day === 0 ? 6 : day - 1));
+  }
+  if (!cutoff) return results;
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return results.filter(r => (r.game_date || '') >= cutoffStr);
+}
+
+function getPnLDateRange(results) {
+  if (!results || results.length === 0) return { days: 0, from: '', to: '' };
+  const dates = results.map(r => r.game_date || '').filter(d => d).sort();
+  if (dates.length === 0) return { days: 0, from: '', to: '' };
+  const from = dates[0];
+  const to = dates[dates.length - 1];
+  const d1 = new Date(from); const d2 = new Date(to);
+  const days = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+  return { days, from, to };
+}
+
+function setPnLFilter(period) {
+  pnlFilter = period;
+  document.querySelectorAll('.pnl-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.period === period));
+  renderPnLContent();
+}
+
 function renderPnL() {
   const section = document.getElementById('pnlSection');
   if (!allResults || allResults.length === 0) {
@@ -1268,15 +1340,40 @@ function renderPnL() {
     return;
   }
 
+  let html = `<div class="pnl-filter-bar">
+    <button class="pnl-filter-btn active" data-period="all" onclick="setPnLFilter('all')">All</button>
+    <button class="pnl-filter-btn" data-period="week" onclick="setPnLFilter('week')">This Week</button>
+    <button class="pnl-filter-btn" data-period="7d" onclick="setPnLFilter('7d')">7 Days</button>
+    <button class="pnl-filter-btn" data-period="14d" onclick="setPnLFilter('14d')">14 Days</button>
+    <button class="pnl-filter-btn" data-period="30d" onclick="setPnLFilter('30d')">30 Days</button>
+    <span class="pnl-days-badge" id="pnlDaysBadge"></span>
+  </div>`;
+  html += '<div id="pnlContent"></div>';
+  section.innerHTML = html;
+  renderPnLContent();
+}
+
+function renderPnLContent() {
+  const container = document.getElementById('pnlContent');
+  const filtered = filterResultsByPeriod(allResults, pnlFilter);
+  const range = getPnLDateRange(filtered);
+
+  const badge = document.getElementById('pnlDaysBadge');
+  if (badge) {
+    if (filtered.length > 0 && range.days > 0) {
+      badge.textContent = `${range.days} day${range.days !== 1 ? 's' : ''} \u00b7 ${range.from} to ${range.to}`;
+    } else {
+      badge.textContent = '';
+    }
+  }
+
   let html = '';
+  const periodLabel = pnlFilter === 'all' ? '' : pnlFilter === 'week' ? ' (This Week)' : ` (Last ${pnlFilter})`;
+  html += buildPnLBlock('Picks P&L' + periodLabel, 'BET grade picks \u00b7 $100/unit', filtered);
 
-  // P&L — BET picks only (LEANs are informational, not tracked)
-  html += buildPnLBlock('Picks P&L', 'BET grade picks &middot; $100/unit', allResults);
-
-  // By category
-  const betGame = allResults.filter(x => x.bet_type === 'game');
-  const betK = allResults.filter(x => x.bet_type === 'strikeout');
-  const betNrfi = allResults.filter(x => x.bet_type === 'nrfi');
+  const betGame = filtered.filter(x => x.bet_type === 'game');
+  const betK = filtered.filter(x => x.bet_type === 'strikeout');
+  const betNrfi = filtered.filter(x => x.bet_type === 'nrfi');
 
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px">';
   html += buildPnLBlock('Game', '', betGame);
@@ -1284,7 +1381,7 @@ function renderPnL() {
   html += buildPnLBlock('NRFI', '', betNrfi);
   html += '</div>';
 
-  section.innerHTML = html;
+  container.innerHTML = html;
 }
 
 function updateFooterSync() {
