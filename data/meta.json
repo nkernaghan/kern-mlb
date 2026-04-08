@@ -1,11 +1,11 @@
 {
-  "exported_at": "2026-04-07T14:12:50.793331",
-  "games": 105,
-  "predictions": 112,
-  "odds": 3441,
-  "results": 41,
+  "exported_at": "2026-04-08T09:20:25.753371",
+  "games": 106,
+  "predictions": 172,
+  "odds": 2676,
+  "results": 44,
   "date_range": {
-    "from": "2026-03-31",
-    "to": "2026-04-10"
+    "from": "2026-04-01",
+    "to": "2026-04-11"
   }
 }
